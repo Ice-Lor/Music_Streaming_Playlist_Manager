@@ -3,54 +3,152 @@ package controller;
 import model.Song;
 import model.Playlist;
 import model.Node;
+import java.sql.*;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MusicLibrary {
-    // HashMap lưu trữ kho bài hát tổng hợp để tra cứu nhanh bằng ID - O(1)
     private HashMap<String, Song> songMap;
-    // ArrayList chứa kho nhạc phục vụ tìm kiếm tuyến tính theo từ khóa
     private List<Song> songList;
-    // HashMap quản lý các Playlist trên hệ thống bằng ID - O(1)
     private HashMap<String, Playlist> playlistMap;
+    private boolean useDatabase = false;
 
     public MusicLibrary() {
         songMap = new HashMap<>();
         songList = new ArrayList<>();
         playlistMap = new HashMap<>();
+        
+        // Thử tải dữ liệu từ Database SQL Server khi khởi tạo
+        try {
+            loadFromDatabase();
+            useDatabase = true;
+            System.out.println("[DB] Kết nối SQL Server thành công và đã tải dữ liệu!");
+        } catch (Exception e) {
+            System.err.println("[DB] Không thể kết nối SQL Server (Sẽ dùng bộ nhớ tạm Demo): " + e.getMessage());
+            useDatabase = false;
+        }
+    }
+
+    // Tải dữ liệu từ database vào các cấu trúc dữ liệu
+    public void loadFromDatabase() throws SQLException, ClassNotFoundException {
+        songMap.clear();
+        songList.clear();
+        playlistMap.clear();
+
+        try (Connection conn = DBContext.getConnection()) {
+            // 1. Tải tất cả bài hát
+            String sqlSongs = "SELECT * FROM Songs";
+            try (PreparedStatement stmt = conn.prepareStatement(sqlSongs);
+                 ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Song song = new Song(
+                        rs.getString("songId"),
+                        rs.getString("title"),
+                        rs.getString("artist"),
+                        rs.getString("album"),
+                        rs.getInt("duration"),
+                        rs.getString("genre"),
+                        rs.getString("fileUrl")
+                    );
+                    songMap.put(song.getSongId(), song);
+                    songList.add(song);
+                }
+            }
+
+            // 2. Tải tất cả playlist
+            String sqlPlaylists = "SELECT * FROM Playlists";
+            try (PreparedStatement stmt = conn.prepareStatement(sqlPlaylists);
+                 ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Playlist playlist = new Playlist(
+                        rs.getString("playlistId"),
+                        rs.getString("name"),
+                        rs.getString("creationDate")
+                    );
+                    playlistMap.put(playlist.getPlaylistId(), playlist);
+                }
+            }
+
+            // 3. Tải các bài hát trong từng playlist và liên kết chúng (Doubly Linked List)
+            String sqlPlaylistSongs = "SELECT * FROM Playlist_Songs ORDER BY playlistId";
+            try (PreparedStatement stmt = conn.prepareStatement(sqlPlaylistSongs);
+                 ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String playlistId = rs.getString("playlistId");
+                    String songId = rs.getString("songId");
+                    Playlist playlist = playlistMap.get(playlistId);
+                    Song song = songMap.get(songId);
+                    if (playlist != null && song != null) {
+                        playlist.addSong(song);
+                    }
+                }
+            }
+        }
     }
 
     public void addSongToLibrary(Song song) {
-        if (song != null) {
-            songMap.put(song.getSongId(), song);
+        if (song == null) return;
+        
+        songMap.put(song.getSongId(), song);
+        if (!songList.contains(song)) {
             songList.add(song);
         }
-    }
 
-    // Hàm hỗ trợ gán cứng ID cho playlist
-    public void addPlaylistToLibrary(String playlistId, Playlist playlist) {
-        if (playlist != null) {
-            playlistMap.put(playlistId, playlist);
+        if (useDatabase) {
+            String sql = "IF NOT EXISTS (SELECT 1 FROM Songs WHERE songId = ?) " +
+                         "INSERT INTO Songs (songId, title, artist, album, duration, genre, fileUrl) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            try (Connection conn = DBContext.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, song.getSongId());
+                stmt.setString(2, song.getSongId());
+                stmt.setString(3, song.getTitle());
+                stmt.setString(4, song.getArtist());
+                stmt.setString(5, song.getAlbum());
+                stmt.setInt(6, song.getDuration());
+                stmt.setString(7, song.getGenre());
+                stmt.setString(8, song.getFileUrl());
+                stmt.executeUpdate();
+            } catch (Exception e) {
+                System.err.println("[DB Error] Thêm bài hát thất bại: " + e.getMessage());
+            }
         }
     }
 
-    // Lấy toàn bộ danh sách bài hát
+    public void addPlaylistToLibrary(String playlistId, Playlist playlist) {
+        if (playlist == null) return;
+        
+        playlistMap.put(playlistId, playlist);
+
+        if (useDatabase) {
+            String sql = "IF NOT EXISTS (SELECT 1 FROM Playlists WHERE playlistId = ?) " +
+                         "INSERT INTO Playlists (playlistId, name, creationDate, userId) VALUES (?, ?, ?, ?)";
+            try (Connection conn = DBContext.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, playlistId);
+                stmt.setString(2, playlistId);
+                stmt.setString(3, playlist.getName());
+                stmt.setString(4, playlist.getCreationDate());
+                stmt.setString(5, "U01"); // Mặc định gán cho user U01
+                stmt.executeUpdate();
+            } catch (Exception e) {
+                System.err.println("[DB Error] Thêm playlist thất bại: " + e.getMessage());
+            }
+        }
+    }
+
     public List<Song> getAllSongs() {
         return songList;
     }
 
-    // Lấy Playlist theo ID
     public Playlist getPlaylistById(String playlistId) {
         return playlistMap.get(playlistId);
     }
 
-    // THUẬT TOÁN 3A: Tra cứu nhanh theo ID bằng HashMap - O(1)
     public Song getSongById(String songId) {
         return songMap.get(songId);
     }
 
-    // THUẬT TOÁN 3B: Tìm kiếm tuyến tính kết hợp lọc chuỗi (Keyword) - O(n)
     public List<Song> searchSongs(String keyword) {
         List<Song> result = new ArrayList<>();
         if (keyword == null || keyword.trim().isEmpty()) {
@@ -58,7 +156,6 @@ public class MusicLibrary {
         }
         
         String lowerKeyword = keyword.toLowerCase();
-        
         for (Song song : songList) {
             if (song.getTitle().toLowerCase().contains(lowerKeyword) || 
                 song.getArtist().toLowerCase().contains(lowerKeyword)) {
@@ -68,21 +165,17 @@ public class MusicLibrary {
         return result;
     }
 
-    // =========================================================================
-    // QUY TRÌNH THUẬT TOÁN CHUẨN 6 BƯỚC: THÊM BÀI HÁT VÀO PLAYLIST (Trang 4 PDF)
-    // =========================================================================
+    // QUY TRÌNH THUẬT TOÁN CHUẨN 6 BƯỚC: THÊM BÀI HÁT VÀO PLAYLIST (Đồng bộ DB)
     public String addSongToPlaylist(String playlistId, String songId) {
-        // Bước 1: Tiếp nhận dữ liệu đầu vào (playlistId và songId)
         System.out.println("[Yêu cầu] Thêm bài hát " + songId + " vào Playlist " + playlistId);
 
-        // Bước 2: Kiểm tra tính hợp lệ của Playlist_ID và Song_ID trên hệ thống
         Playlist playlist = playlistMap.get(playlistId);
         Song song = songMap.get(songId);
         if (playlist == null || song == null) {
-            return "Lỗi: Không tìm thấy dữ liệu (Playlist hoặc Bài hát không tồn tại trên hệ thống)";
+            return "Lỗi: Không tìm thấy dữ liệu (Playlist hoặc Bài hát không tồn tại)";
         }
 
-        // Bước 3: Kiểm tra trùng lặp trong Playlist (Duyệt qua DLL)
+        // Kiểm tra trùng lặp trong Playlist (Duyệt qua DLL)
         Node current = playlist.getHead();
         while (current != null) {
             if (current.data.getSongId().equals(songId)) {
@@ -91,11 +184,28 @@ public class MusicLibrary {
             current = current.next;
         }
 
-        // Bước 4 + Bước 5: Chèn dữ liệu vào cuối (Append DLL) và cập nhật Metadata
-        // Thao tác này được đóng gói trong phương thức addSong của đối tượng Playlist
+        // Lưu vào Database
+        if (useDatabase) {
+            String sql = "INSERT INTO Playlist_Songs (playlistId, songId) VALUES (?, ?)";
+            try (Connection conn = DBContext.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, playlistId);
+                stmt.setString(2, songId);
+                stmt.executeUpdate();
+            } catch (Exception e) {
+                System.err.println("[DB Error] Thêm bài hát vào playlist thất bại: " + e.getMessage());
+                return "Lỗi: Lỗi kết nối cơ sở dữ liệu!";
+            }
+        }
+
+        // Chèn vào DLL và cập nhật Metadata trong memory
         playlist.addSong(song);
 
-        // Bước 6: Trả về thông báo phản hồi thành công
         return "Thông báo: Thêm bài hát thành công!";
     }
+
+    public boolean isUseDatabase() {
+        return useDatabase;
+    }
 }
+

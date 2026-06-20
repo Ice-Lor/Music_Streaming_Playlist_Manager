@@ -409,3 +409,173 @@ a { color: inherit; text-decoration: none; }
     .sidebar { display: none; }
     .search-form { width: 200px; }
 }
+
+/* ===== BOTTOM PLAYER ===== */
+.bottom-player {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background: rgba(17, 17, 24, 0.95);
+    backdrop-filter: blur(25px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    z-index: 1000;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+}
+
+.player-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 25%;
+}
+
+.player-track-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    box-shadow: var(--shadow-glow);
+}
+
+.player-track-info {
+    overflow: hidden;
+}
+
+.player-track-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.player-track-artist {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+}
+
+.player-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: 50%;
+}
+
+.player-controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.player-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: color 0.15s, transform 0.1s;
+}
+
+.player-btn:hover {
+    color: var(--text-primary);
+}
+
+.btn-play {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.btn-play:hover {
+    background: #fff;
+    transform: scale(1.05);
+    color: var(--bg-primary);
+}
+
+.player-progress-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    max-width: 500px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.player-progress {
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.1);
+    outline: none;
+    cursor: pointer;
+    accent-color: var(--accent-light);
+}
+
+.player-progress:hover {
+    height: 6px;
+}
+
+.player-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    width: 25%;
+}
+
+.player-volume-area {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.player-volume {
+    width: 100px;
+    height: 4px;
+    accent-color: var(--accent-light);
+    cursor: pointer;
+}
+
+.app-layout {
+    padding-bottom: 90px;
+}
+
+/* Nút phát nhạc trên bảng */
+.btn-play-song {
+    background: none;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: transform 0.15s;
+    color: var(--accent-light);
+}
+.btn-play-song:hover {
+    transform: scale(1.2);
+    color: var(--text-primary);
+}
+

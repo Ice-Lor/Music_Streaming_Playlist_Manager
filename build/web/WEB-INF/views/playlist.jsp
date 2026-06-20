@@ -141,7 +141,15 @@
                 %>
                 <tr>
                     <td class="song-num"><%= i++ %></td>
-                    <td class="song-title">🎵 <%= s.getTitle() %></td>
+                    <td class="song-title">
+                        <button class="btn-play-song" 
+                                data-url="<%= s.getFileUrl().startsWith("http") ? s.getFileUrl() : (request.getContextPath() + "/" + s.getFileUrl()) %>" 
+                                data-local="${pageContext.request.contextPath}/assets/songs/<%= s.getSongId().toLowerCase() %>.mp3" 
+                                data-title="<%= s.getTitle() %>" 
+                                data-artist="<%= s.getArtist() %>" 
+                                title="Phát nhạc">▶</button>
+                        <%= s.getTitle() %>
+                    </td>
                     <td><%= s.getArtist() %></td>
                     <td><%= s.getAlbum() %></td>
                     <td><span class="badge"><%= s.getGenre() %></span></td>
@@ -154,5 +162,7 @@
         <% } %>
     </main>
 </div>
+<jsp:include page="player.jsp" />
 </body>
 </html>
+
